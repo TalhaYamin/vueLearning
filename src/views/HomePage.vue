@@ -14,6 +14,7 @@
           placeholder="Enter Zip Code"
           class="search-input"
         />
+        <a-button v-if="searchZipCode" type="default" @click="clearSearch" class="clear-button">×</a-button>
         <a-button type="primary" htmlType="submit">Search</a-button>
       </form>
     </div>
@@ -121,6 +122,11 @@ export default {
       store.dispatch('searchBuyersByZipCode', searchZipCode.value);
     };
 
+    const clearSearch = () => {
+      searchZipCode.value = '';
+      store.dispatch('fetchBuyers'); // Re-fetch all buyers when search is cleared
+    };
+
     return {
       columns: [
         { title: 'ID', dataIndex: 'id', key: 'id' },
@@ -141,7 +147,8 @@ export default {
       handleModalSubmit,
       handleModalCancel,
       handleTableChange,
-      handleSearch
+      handleSearch,
+      clearSearch
     };
   }
 };
@@ -160,5 +167,14 @@ export default {
   border-radius: 4px;
   border: 1px solid #ccc;
   width: 200px;
+  margin-top: 10px;
+}
+
+.clear-button {
+  margin-right: 10px;
+  background-color: #f5f5f5;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
 }
 </style>

@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import HomePage from '../views/HomePage.vue';
 import AboutPage from '../views/AboutPage.vue';
-import TaskPage from '../views/TaskPage.vue'
+import TaskPage from '../views/TaskPage.vue';
 import LoginPage from '../views/LoginPage.vue';
 
 const routes = [
@@ -17,10 +17,15 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = !!localStorage.getItem('token'); // Check if the token is stored
-  if (to.name !== 'Login' && !isAuthenticated) next({ name: 'Login' });
-  else next();
+  const isAuthenticated = !!localStorage.getItem('token');
+  
+  if (!isAuthenticated && to.name !== 'Login') {
+    next({ name: 'Login' });
+  } else if (isAuthenticated && to.name === 'Login') {
+    next({ name: 'Home' });
+  } else {
+    next();
+  }
 });
-
 
 export default router;

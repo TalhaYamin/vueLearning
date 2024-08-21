@@ -68,17 +68,32 @@ export default {
     const isModalVisible = ref(props.visible);
     const formData = reactive({ ...props.buyerData });
 
-    // Convert ISO date to YYYY-MM-DD format for date input on edit
-    watch(() => props.buyerData.agreement_expiry_date, (newDate) => {
-      if (newDate) {
-        formData.agreement_expiry_date = newDate.split('T')[0]; // Extract the date part (YYYY-MM-DD)
-      }
-    }, { immediate: true });
-
     watch(() => props.visible, (newVal) => {
       isModalVisible.value = newVal;
-      Object.assign(formData, props.buyerData); // Reset the form data when the modal is opened
+
+      if (props.isEditMode && newVal) {
+        // Populate form with buyerData for edit mode
+        Object.assign(formData, props.buyerData);
+      }
     });
+
+    // Watch for when the modal is closed, and reset the form
+    watch(isModalVisible, (newVal) => {
+      if (!newVal) {
+        resetForm(); // Reset the form when the modal is closed
+      }
+    });
+
+    const resetForm = () => {
+      Object.assign(formData, {
+        first_name: '',
+        last_name: '',
+        email: '',
+        primary_phone_number: '',
+        additional_desires: '',
+        agreement_expiry_date: ''
+      });
+    };
 
     const handleOk = () => {
       // Ensure the date is converted back to ISO before sending
@@ -106,6 +121,7 @@ export default {
       isModalVisible,
       handleOk,
       handleCancel,
+      resetForm,
     };
   },
 };
