@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="chat-container">
     <!-- Admin Controls -->
-    <div v-if="user && user.role === 'admin'">
+    <div v-if="user && user.role === 'admin'" class="admin-controls">
       <h3>Admin Controls</h3>
       <input v-model="newRoom" placeholder="New room name" />
       <button @click="createRoom">Create Room</button>
@@ -14,39 +14,51 @@
     </div>
 
     <!-- Rooms -->
-    <h2>Available Rooms</h2>
-    <ul>
-      <li v-for="room in rooms" :key="room" @click="joinRoom(room)">
-        {{ room }}
-      </li>
-    </ul>
+    <div class="room-list">
+      <h2>Available Rooms</h2>
+      <ul>
+        <li v-for="room in rooms" :key="room" @click="joinRoom(room)">
+          {{ room }}
+        </li>
+      </ul>
+    </div>
 
-    <!-- Messages -->
-    <h2>Messages in Room: {{ currentRoom }}</h2>
-    <ul>
-      <li v-for="message in roomMessages" :key="message.timestamp + message.message">
-        <strong>{{ message.senderEmail }}:</strong> {{ message.message }} 
-        <small>{{ formatTimestamp(message.timestamp) }}</small>
-      </li>
-    </ul>
+    <!-- Chat Area -->
+    <div class="chat-area">
+      <h2>Messages in Room: {{ currentRoom }}</h2>
 
-    <!-- Typing Indicator -->
-    <p v-if="typingUser">{{ typingUser }} is typing...</p>
+      <div class="messages-container">
+        <ul>
+          <li v-for="message in roomMessages" :key="message.timestamp + message.message" 
+              :class="{ 'message-sender': message.senderEmail === user.email, 'message-receiver': message.senderEmail !== user.email }">
+            <strong>{{ message.senderEmail }}:</strong> 
+            <div class="message-content">{{ message.message }}</div>
+            <small class="message-time">{{ formatTimestamp(message.timestamp) }}</small>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Typing Indicator -->
+      <p v-if="typingUser" class="typing-indicator">{{ typingUser }} is typing...</p>
+
+      <!-- Input for Sending Messages -->
+      <input v-if="currentRoom" 
+             v-model="message" 
+             @keyup.enter="sendRoomMessage" 
+             @input="startTyping" 
+             placeholder="Type a message..." 
+             class="message-input"/>
+    </div>
 
     <!-- Online Users -->
-    <h2 v-if="currentRoom">Online Users in Room {{ currentRoom }}</h2>
-    <ul>
-      <li v-for="user in onlineUsers" :key="user.id">
-        {{ user.email }} ({{ user.role }})
-      </li>
-    </ul>
-
-    <!-- Input for Sending Messages -->
-    <input v-if="currentRoom" 
-           v-model="message" 
-           @keyup.enter="sendRoomMessage" 
-           @input="startTyping" 
-           placeholder="Type a message in the room" />
+    <div class="online-users" v-if="currentRoom">
+      <h2>Online Users in Room {{ currentRoom }}</h2>
+      <ul>
+        <li v-for="user in onlineUsers" :key="user.id">
+          {{ user.email }} ({{ user.role }})
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
@@ -59,16 +71,16 @@ export default {
     return {
       socket: null,
       message: '',
-      rooms: [], // List of rooms fetched from the server
+      rooms: [],
       currentRoom: null,
-      roomMessages: [], // Messages in the current room
-      onlineUsers: [], // List of online users in the current room
-      typingUser: '',  // Track who is typing
-      typingTimeout: null,  // Timeout for stopping typing
-      user: null, // Store user information
-      newRoom: '', // Admin control: new room name
-      roomToDelete: '', // Admin control: room to delete
-      banUserEmail: '' // Admin control: user email to ban
+      roomMessages: [],
+      onlineUsers: [],
+      typingUser: '',
+      typingTimeout: null,
+      user: null,
+      newRoom: '',
+      roomToDelete: '',
+      banUserEmail: ''
     };
   },
   mounted() {
@@ -80,7 +92,6 @@ export default {
         query: { userId: user.id, email: user.email }
       });
 
-      // Get the list of rooms
       this.socket.on('room list', (rooms) => {
         this.rooms = rooms;
       });
@@ -123,11 +134,11 @@ export default {
   methods: {
     joinRoom(room) {
       if (this.currentRoom === room) {
-        return; // Prevent joining the same room multiple times
+        return;
       }
 
       if (this.currentRoom) {
-        this.socket.emit('leave room', this.currentRoom); // Leave the current room
+        this.socket.emit('leave room', this.currentRoom);
       }
 
       this.currentRoom = room;
@@ -135,7 +146,6 @@ export default {
       this.onlineUsers = [];
       this.typingUser = '';
 
-      console.log(`Joining room: ${room}`);
       this.socket.emit('join room', room);
     },
     sendRoomMessage() {
@@ -145,7 +155,7 @@ export default {
           message: this.message
         });
 
-        this.message = ''; // Clear input field
+        this.message = '';
         this.socket.emit('stopped typing', { room: this.currentRoom, userEmail: this.user.email });
       }
     },
@@ -163,24 +173,24 @@ export default {
     createRoom() {
       if (this.newRoom.trim() !== '') {
         this.socket.emit('create room', this.newRoom);
-        this.newRoom = ''; // Clear input field
+        this.newRoom = '';
       }
     },
     deleteRoom() {
       if (this.roomToDelete.trim() !== '') {
         this.socket.emit('delete room', this.roomToDelete);
-        this.roomToDelete = ''; // Clear input field
+        this.roomToDelete = '';
       }
     },
     banUser() {
       if (this.banUserEmail.trim() !== '') {
         this.socket.emit('ban user', { userEmail: this.banUserEmail, room: this.currentRoom });
-        this.banUserEmail = ''; // Clear input field
+        this.banUserEmail = '';
       }
     },
     formatTimestamp(timestamp) {
       const date = new Date(timestamp);
-      return date.toLocaleTimeString(); // Format the timestamp into a human-readable time
+      return date.toLocaleTimeString();
     }
   },
   beforeUnmount() {
@@ -192,32 +202,98 @@ export default {
 </script>
 
 <style>
-/* Add your styles */
-input {
-  padding: 10px;
-  width: 80%;
+.chat-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  font-family: Arial, sans-serif;
 }
 
-ul {
-  list-style: none;
+.room-list, .online-users {
+  width: 20%;
+  background-color: #f7f7f7;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.room-list ul, .online-users ul {
   padding: 0;
+  list-style-type: none;
 }
 
-li {
+.room-list ul li, .online-users ul li {
+  padding: 10px;
   margin: 5px 0;
+  background-color: #fff;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
-h2 {
-  margin-top: 20px;
+.room-list ul li:hover, .online-users ul li:hover {
+  background-color: #eee;
 }
 
-p {
+.chat-area {
+  width: 55%;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.messages-container {
+  height: 400px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.messages-container ul {
+  padding: 0;
+  list-style-type: none;
+}
+
+.messages-container li {
+  display: flex;
+  flex-direction: column;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 10px;
+  max-width: 60%;
+}
+
+.message-sender {
+  align-self: flex-end;
+  background-color: #daf8cb;
+  text-align: right;
+}
+
+.message-receiver {
+  align-self: flex-start;
+  background-color: #f1f0f0;
+  text-align: left;
+}
+
+.message-content {
+  margin-top: 5px;
+}
+
+.message-time {
+  font-size: 0.8em;
+  color: gray;
+}
+
+.typing-indicator {
   font-style: italic;
   color: gray;
 }
 
-small {
-  color: gray;
-  font-size: 0.8em;
+.message-input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 100%;
+  margin-top: 10px;
 }
 </style>
