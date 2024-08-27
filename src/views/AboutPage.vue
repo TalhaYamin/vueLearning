@@ -1,6 +1,15 @@
 <template>
   <div>
     <h1>About Page</h1>
-    <p>Learn more about us here!</p>
+    <ChatComponent/>
   </div>
 </template>
+<script>
+import ChatComponent from '../components/Chat.vue';
+
+export default {
+  components: {
+    ChatComponent,
+  },
+};
+</script>

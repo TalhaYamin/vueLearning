@@ -46,6 +46,7 @@ export default {
         const data = await response.json();
         if (response.ok) {
           localStorage.setItem('token', data.data.token);
+          localStorage.setItem('user', JSON.stringify({ email: email.value, id: data.data.id }));
           router.push('/');
         } else {
           error.value = data.message || 'Invalid email or password.';
