@@ -7,7 +7,8 @@
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
     "start": "node server/server.js",
-    "dev": "concurrently \"npm run serve\" \"npm run start\""
+    "server": "npm run dev --prefix server",
+    "dev": "concurrently \"npm run serve\" \"npm run server\""
   },
   "dependencies": {
     "ant-design-vue": "^4.2.3",
@@ -25,6 +26,7 @@
     "socket.io-client": "^4.7.5",
     "vue": "^3.2.13",
     "vue-router": "^4.4.3",
+    "vue-toastification": "^2.0.0-rc.5",
     "vuex": "^4.0.2"
   },
   "devDependencies": {

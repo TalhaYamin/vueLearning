@@ -34,7 +34,8 @@ export default {
       }
 
       try {
-        const response = await fetch('/api/users/log_in', {
+        // Update the URL to match your actual backend endpoint
+        const response = await fetch('http://localhost:3000/api/auth/signin', {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
@@ -45,11 +46,12 @@ export default {
 
         const data = await response.json();
         if (response.ok) {
-          localStorage.setItem('token', data.data.token);
-          localStorage.setItem('user', JSON.stringify({ email: email.value, id: data.data.id }));
-          router.push('/');
+          // Save token and user details in local storage
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify({ email: email.value, id: data.userId }));
+          router.push('/'); // Redirect to home page
         } else {
-          error.value = data.message || 'Invalid email or password.';
+          error.value = data.error || 'Invalid email or password.';
         }
       } catch (err) {
         error.value = 'An error occurred during login.';

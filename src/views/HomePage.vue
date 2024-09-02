@@ -4,17 +4,23 @@
 
     <a-button type="primary" @click="showModal">+ Add Buyer</a-button>
 
-
-    <!-- Search by Zip Code -->
+    <!-- Search with Multiple Filters -->
     <div class="search-container">
       <form @submit.prevent="handleSearch">
         <input
-          v-model="searchZipCode"
+          v-model="filters.name"
           type="text"
-          placeholder="Enter Zip Code"
+          placeholder="Search by Name"
           class="search-input"
         />
-        <a-button v-if="searchZipCode" type="default" @click="clearSearch" class="clear-button">×</a-button>
+        <input
+          v-model="filters.company"
+          type="text"
+          placeholder="Search by Company"
+          class="search-input"
+        />
+        <!-- Add more filter inputs as needed -->
+        <a-button v-if="isAnyFilterActive" type="default" @click="clearSearch" class="clear-button">×</a-button>
         <a-button type="primary" htmlType="submit">Search</a-button>
       </form>
     </div>
@@ -23,18 +29,17 @@
     <a-table
       :columns="columns"
       :data-source="paginatedData"
-      row-key="id"
+      row-key="_id"
       :pagination="paginationConfig"
       @change="handleTableChange"
     >
-      <!-- Custom template for action buttons -->
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'action'">
           <a-button type="link" @click="handleEdit(record)">Edit</a-button>
+          <a-button type="link" danger @click="handleDelete(record._id)">Delete</a-button>
         </template>
       </template>
     </a-table>
-
 
     <!-- Buyer Modal -->
     <BuyerModal
@@ -48,7 +53,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, watch } from 'vue'; 
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import BuyerModal from '../components/BuyerModal.vue';
 
@@ -61,9 +66,8 @@ export default {
     const isModalVisible = ref(false);
     const isEditMode = ref(false);
     const formData = reactive({});
-    const searchZipCode = ref(''); // New zip code search input
+    const filters = reactive({ name: '', company: '' }); // Define your filters here
 
-    // Fetch buyers data from Vuex store when component is mounted
     onMounted(() => {
       store.dispatch('fetchBuyers');
     });
@@ -73,7 +77,7 @@ export default {
     const paginationConfig = reactive({
       current: 1,
       pageSize: 10,
-      total: 0
+      total: 0,
     });
 
     watch(buyers, (newBuyers) => {
@@ -104,6 +108,10 @@ export default {
       isModalVisible.value = true;
     };
 
+    const handleDelete = (buyerId) => {
+      store.dispatch('deleteBuyer', buyerId);
+    };
+
     const handleModalSubmit = (buyerData) => {
       if (isEditMode.value) {
         store.dispatch('updateBuyer', buyerData);
@@ -117,26 +125,31 @@ export default {
       isModalVisible.value = false;
     };
 
-    // Handle Zip Code Search
+    // Check if any filter is active
+    const isAnyFilterActive = computed(() => {
+      return Object.values(filters).some((value) => value.trim() !== '');
+    });
+
+    // Handle Search with Filters
     const handleSearch = () => {
-      store.dispatch('searchBuyersByZipCode', searchZipCode.value);
+      store.dispatch('searchBuyersWithFilters', filters);
     };
 
     const clearSearch = () => {
-      searchZipCode.value = '';
+      filters.name = '';
+      filters.company = '';
       store.dispatch('fetchBuyers'); // Re-fetch all buyers when search is cleared
     };
 
     return {
       columns: [
-        { title: 'ID', dataIndex: 'id', key: 'id' },
-        { title: 'First Name', dataIndex: 'first_name', key: 'first_name' },
-        { title: 'Last Name', dataIndex: 'last_name', key: 'last_name' },
+        { title: 'ID', dataIndex: '_id', key: '_id' },
+        { title: 'Name', dataIndex: 'name', key: 'name' },
         { title: 'Email', dataIndex: 'email', key: 'email' },
-        { title: 'Phone', dataIndex: 'primary_phone_number', key: 'primary_phone_number' },
+        { title: 'Phone', dataIndex: 'phone', key: 'phone' },
         { title: 'Action', key: 'action' },
       ],
-      searchZipCode,
+      filters,
       paginatedData,
       paginationConfig,
       isModalVisible,
@@ -144,13 +157,15 @@ export default {
       formData,
       showModal,
       handleEdit,
+      handleDelete,
       handleModalSubmit,
       handleModalCancel,
       handleTableChange,
       handleSearch,
-      clearSearch
+      clearSearch,
+      isAnyFilterActive,
     };
-  }
+  },
 };
 </script>
 

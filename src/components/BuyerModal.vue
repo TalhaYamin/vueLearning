@@ -2,53 +2,37 @@
   <a-modal
     :title="isEditMode ? 'Edit Buyer' : 'Create Buyer'"
     v-model:visible="isModalVisible"
-    @ok="handleOk"
     @cancel="handleCancel"
   >
     <form @submit.prevent="handleOk" class="buyer-form">
       <div class="form-item">
-        <label for="first_name">First Name</label>
-        <input v-model="formData.first_name" type="text" id="first_name" placeholder="Enter First Name" />
-      </div>
-      <div class="form-item">
-        <label for="last_name">Last Name</label>
-        <input v-model="formData.last_name" type="text" id="last_name" placeholder="Enter Last Name" />
+        <label for="name">Name</label>
+        <input v-model="formData.name" type="text" id="name" placeholder="Enter Name" />
       </div>
       <div class="form-item">
         <label for="email">Email</label>
         <input v-model="formData.email" type="email" id="email" placeholder="Enter Email" />
       </div>
       <div class="form-item">
-        <label for="primary_phone_number">Primary Phone</label>
-        <input v-model="formData.primary_phone_number" type="text" id="primary_phone_number" placeholder="Enter Phone Number" />
+        <label for="phone">Primary Phone</label>
+        <input v-model="formData.phone" type="text" id="phone" placeholder="Enter Phone Number" />
       </div>
       <div class="form-item">
-        <label for="additional_desires">Additional Desires</label>
-        <input v-model="formData.additional_desires" type="text" id="additional_desires" placeholder="Enter Additional Desires" />
+        <label for="company">Company</label>
+        <input v-model="formData.company" type="text" id="company" placeholder="Enter Company" />
       </div>
-      <div class="form-item">
-        <label for="agreement_expiry_date">Agreement Expiry Date</label>
-        <input
-          v-model="formData.agreement_expiry_date"
-          type="date"
-          id="agreement_expiry_date"
-          placeholder="Select Expiry Date"
-          style="width: 100%"
-        />
-      </div>
+      <!-- Submit button inside the form to trigger handleOk only once -->
+      <a-button type="primary" htmlType="submit">
+        {{ isEditMode ? 'Update' : 'Create' }} Buyer
+      </a-button>
     </form>
   </a-modal>
 </template>
 
 <script>
 import { ref, reactive, watch } from 'vue';
-import { Modal } from 'ant-design-vue';
-import { useStore } from 'vuex';
 
 export default {
-  components: {
-    'a-modal': Modal,
-  },
   props: {
     isEditMode: {
       type: Boolean,
@@ -64,49 +48,21 @@ export default {
     },
   },
   setup(props, { emit }) {
-    const store = useStore();
     const isModalVisible = ref(props.visible);
     const formData = reactive({ ...props.buyerData });
 
-    watch(() => props.visible, (newVal) => {
-      isModalVisible.value = newVal;
-
-      if (props.isEditMode && newVal) {
-        // Populate form with buyerData for edit mode
-        Object.assign(formData, props.buyerData);
+    watch(
+      () => props.visible,
+      (newVal) => {
+        isModalVisible.value = newVal;
+        if (props.isEditMode && newVal) {
+          Object.assign(formData, props.buyerData);
+        }
       }
-    });
-
-    // Watch for when the modal is closed, and reset the form
-    watch(isModalVisible, (newVal) => {
-      if (!newVal) {
-        resetForm(); // Reset the form when the modal is closed
-      }
-    });
-
-    const resetForm = () => {
-      Object.assign(formData, {
-        first_name: '',
-        last_name: '',
-        email: '',
-        primary_phone_number: '',
-        additional_desires: '',
-        agreement_expiry_date: ''
-      });
-    };
+    );
 
     const handleOk = () => {
-      // Ensure the date is converted back to ISO before sending
-      if (formData.agreement_expiry_date && !formData.agreement_expiry_date.includes('T')) {
-        formData.agreement_expiry_date = new Date(formData.agreement_expiry_date).toISOString();
-      }
-
-      if (props.isEditMode) {
-        store.dispatch('updateBuyer', formData);
-      } else {
-        store.dispatch('createBuyer', formData);
-      }
-
+      // Prevent multiple API calls by ensuring handleOk is triggered only by form submission
       emit('submit', formData);
       isModalVisible.value = false;
     };
@@ -121,7 +77,6 @@ export default {
       isModalVisible,
       handleOk,
       handleCancel,
-      resetForm,
     };
   },
 };

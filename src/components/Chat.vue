@@ -29,9 +29,15 @@
 
       <div class="messages-container">
         <ul>
-          <li v-for="message in roomMessages" :key="message.timestamp + message.message" 
-              :class="{ 'message-sender': message.senderEmail === user.email, 'message-receiver': message.senderEmail !== user.email }">
-            <strong>{{ message.senderEmail }}:</strong> 
+          <li
+            v-for="message in roomMessages"
+            :key="message.timestamp + message.message"
+            :class="{
+              'message-sender': message.senderEmail === user.email,
+              'message-receiver': message.senderEmail !== user.email,
+            }"
+          >
+            <strong>{{ message.senderEmail }}:</strong>
             <div class="message-content">{{ message.message }}</div>
             <small class="message-time">{{ formatTimestamp(message.timestamp) }}</small>
           </li>
@@ -42,12 +48,14 @@
       <p v-if="typingUser" class="typing-indicator">{{ typingUser }} is typing...</p>
 
       <!-- Input for Sending Messages -->
-      <input v-if="currentRoom" 
-             v-model="message" 
-             @keyup.enter="sendRoomMessage" 
-             @input="startTyping" 
-             placeholder="Type a message..." 
-             class="message-input"/>
+      <input
+        v-if="currentRoom"
+        v-model="message"
+        @keyup.enter="sendRoomMessage"
+        @input="startTyping"
+        placeholder="Type a message..."
+        class="message-input"
+      />
     </div>
 
     <!-- Online Users -->
@@ -59,11 +67,17 @@
         </li>
       </ul>
     </div>
+
+    <!-- Audio for Notification Sound -->
+    <audio ref="notificationSound" :src="require('@/assets/jump.mp3')" preload="auto"></audio>
+
+    <button @click="playTestSound">Test Sound</button>
   </div>
 </template>
 
 <script>
 import { io } from 'socket.io-client';
+import { useToast } from 'vue-toastification';
 
 export default {
   name: 'ChatComponent',
@@ -80,18 +94,54 @@ export default {
       user: null,
       newRoom: '',
       roomToDelete: '',
-      banUserEmail: ''
+      banUserEmail: '',
     };
   },
+
+  setup() {
+    const toast = useToast(); // Initialize toast
+
+    return {
+      toast, // Make toast available in methods
+    };
+  },
+
   mounted() {
     const user = JSON.parse(localStorage.getItem('user'));
 
     if (user) {
-      this.user = { ...user, role: user.email === 'admin@admin.com' ? 'admin' : 'member' };
+      this.user = {
+        ...user,
+        role: user.email === 'admin@admin.com' ? 'admin' : 'member',
+      };
       this.socket = io('http://localhost:3000', {
-        query: { userId: user.id, email: user.email }
+        query: { userId: user.id, email: user.email },
       });
 
+      this.setupSocketListeners();
+    } else {
+      this.$router.push('/login');
+    }
+
+    // Request notification permission on load
+    if (Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+  },
+  methods: {
+    playTestSound() {
+      const sound = this.$refs.notificationSound;
+      if (sound) {
+        sound.currentTime = 0; // Reset to start
+        sound.play().catch((error) => {
+          console.error('Error playing test sound:', error);
+        });
+      } else {
+        console.error('Audio element not found or failed to load.');
+      }
+    },
+
+    setupSocketListeners() {
       this.socket.on('room list', (rooms) => {
         this.rooms = rooms;
       });
@@ -103,6 +153,7 @@ export default {
       this.socket.on('room message', (msg) => {
         if (msg.room === this.currentRoom) {
           this.roomMessages.push(msg);
+          this.notifyUser(msg); // Trigger sound and notification
         }
       });
 
@@ -120,18 +171,40 @@ export default {
 
       this.socket.on('notification', ({ message, room }) => {
         if (room === this.currentRoom) {
-          this.roomMessages.push({ senderEmail: 'System', message: message, timestamp: new Date().toISOString() });
+          this.roomMessages.push({
+            senderEmail: 'System',
+            message: message,
+            timestamp: new Date().toISOString(),
+          });
+          this.notifyUser({ message: message, senderEmail: 'System' });
         }
       });
 
       this.socket.on('online users', (users) => {
         this.onlineUsers = users;
       });
-    } else {
-      this.$router.push('/login');
-    }
-  },
-  methods: {
+    },
+
+    notifyUser(message) {
+      // Play notification sound
+      const sound = this.$refs.notificationSound;
+      if (sound) {
+        sound.play().catch((error) => {
+          console.error('Error playing notification sound:', error);
+        });
+      }
+
+      // Show browser notification if permissions are granted
+      if (Notification.permission === 'granted') {
+        new Notification(`New message from ${message.senderEmail}`, {
+          body: message.message,
+        });
+      }
+
+      // Display a toast notification using the toast instance
+      this.toast.info(`New message from ${message.senderEmail}: ${message.message}`);
+    },
+
     joinRoom(room) {
       if (this.currentRoom === room) {
         return;
@@ -148,17 +221,19 @@ export default {
 
       this.socket.emit('join room', room);
     },
+
     sendRoomMessage() {
       if (this.message.trim() !== '' && this.currentRoom) {
         this.socket.emit('room message', {
           room: this.currentRoom,
-          message: this.message
+          message: this.message,
         });
 
         this.message = '';
         this.socket.emit('stopped typing', { room: this.currentRoom, userEmail: this.user.email });
       }
     },
+
     startTyping() {
       if (this.typingTimeout) {
         clearTimeout(this.typingTimeout);
@@ -170,130 +245,42 @@ export default {
         this.socket.emit('stopped typing', { room: this.currentRoom, userEmail: this.user.email });
       }, 3000);
     },
+
     createRoom() {
       if (this.newRoom.trim() !== '') {
         this.socket.emit('create room', this.newRoom);
         this.newRoom = '';
       }
     },
+
     deleteRoom() {
       if (this.roomToDelete.trim() !== '') {
         this.socket.emit('delete room', this.roomToDelete);
         this.roomToDelete = '';
       }
     },
+
     banUser() {
       if (this.banUserEmail.trim() !== '') {
         this.socket.emit('ban user', { userEmail: this.banUserEmail, room: this.currentRoom });
         this.banUserEmail = '';
       }
     },
+
     formatTimestamp(timestamp) {
       const date = new Date(timestamp);
       return date.toLocaleTimeString();
-    }
+    },
   },
+
   beforeUnmount() {
     if (this.socket) {
       this.socket.disconnect();
     }
-  }
+  },
 };
 </script>
 
 <style>
-.chat-container {
-  display: flex;
-  justify-content: space-between;
-  padding: 20px;
-  font-family: Arial, sans-serif;
-}
-
-.room-list, .online-users {
-  width: 20%;
-  background-color: #f7f7f7;
-  padding: 20px;
-  border-radius: 10px;
-}
-
-.room-list ul, .online-users ul {
-  padding: 0;
-  list-style-type: none;
-}
-
-.room-list ul li, .online-users ul li {
-  padding: 10px;
-  margin: 5px 0;
-  background-color: #fff;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.room-list ul li:hover, .online-users ul li:hover {
-  background-color: #eee;
-}
-
-.chat-area {
-  width: 55%;
-  display: flex;
-  flex-direction: column;
-  background-color: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.messages-container {
-  height: 400px;
-  overflow-y: auto;
-  margin-bottom: 10px;
-}
-
-.messages-container ul {
-  padding: 0;
-  list-style-type: none;
-}
-
-.messages-container li {
-  display: flex;
-  flex-direction: column;
-  margin: 10px 0;
-  padding: 10px;
-  border-radius: 10px;
-  max-width: 60%;
-}
-
-.message-sender {
-  align-self: flex-end;
-  background-color: #daf8cb;
-  text-align: right;
-}
-
-.message-receiver {
-  align-self: flex-start;
-  background-color: #f1f0f0;
-  text-align: left;
-}
-
-.message-content {
-  margin-top: 5px;
-}
-
-.message-time {
-  font-size: 0.8em;
-  color: gray;
-}
-
-.typing-indicator {
-  font-style: italic;
-  color: gray;
-}
-
-.message-input {
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  width: 100%;
-  margin-top: 10px;
-}
+/* Your existing styles */
 </style>
