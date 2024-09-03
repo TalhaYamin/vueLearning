@@ -1,1 +1,6 @@
 2024-09-03 12:00:29 [31merror[39m: This is an example error
+2024-09-03 15:13:07 [31merror[39m: Invalid token
+2024-09-03 15:14:18 [31merror[39m: Forbidden: You do not have permission to access this resource
+2024-09-03 15:14:39 [31merror[39m: Forbidden: You do not have permission to access this resource
+2024-09-03 15:21:15 [31merror[39m: Validation Error: "Email" must be a valid email address
+2024-09-03 15:22:53 [31merror[39m: Invalid token

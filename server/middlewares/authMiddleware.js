@@ -1,26 +1,35 @@
-// authMiddleware.js
+// middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
+const AppError = require('../utils/errorHandler');
+const User = require('../models/User');
+
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
-const authenticateJWT = (req, res, next) => {
-  const authHeader = req.header('Authorization');
-  
-  // Check if the header is present and formatted correctly
+// Middleware for authentication
+exports.authenticate = (req, res, next) => {
+  const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided or wrong format' });
+    return next(new AppError('Unauthorized access, no token provided', 401));
   }
 
-  // Extract the token from the Authorization header
   const token = authHeader.split(' ')[1];
+  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
+    if (err) return next(new AppError('Invalid token', 401));
 
-  try {
-    // Verify the token using the secret key
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // Attach decoded token data (like userId) to the request
-    next(); // Move to the next middleware or route handler
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
+    const user = await User.findById(decoded.userId);
+    if (!user) return next(new AppError('User not found', 404));
+
+    req.user = user; // Add user info to request object
+    next();
+  });
 };
 
-module.exports = authenticateJWT;
+// Middleware for role-based access control
+exports.authorize = (roles = []) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return next(new AppError('Forbidden: You do not have permission to access this resource', 403));
+    }
+    next();
+  };
+};
