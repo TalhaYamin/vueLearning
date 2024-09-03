@@ -1,47 +1,47 @@
-const Buyer = require('../models/Buyer');
+const buyerService = require('../services/buyerService');
+const AppError = require('../utils/errorHandler');
 
 exports.createBuyer = async (req, res) => {
-    const { name, email, phone, company } = req.body;
     try {
-        const newBuyer = new Buyer({ name, email, phone, company });
-        await newBuyer.save();
+        const newBuyer = await buyerService.createBuyer(req.body);
         res.status(201).json(newBuyer);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        next(new AppError('Failed to create buyer: ' + error.message, 400));
     }
 };
 
 exports.getBuyers = async (req, res) => {
-    const { name, company } = req.query;
     try {
-        const filter = {};
-        if (name) filter.name = { $regex: name, $options: 'i' };
-        if (company) filter.company = { $regex: company, $options: 'i' };
-        
-        const buyers = await Buyer.find(filter);
+        const buyers = await buyerService.getBuyers(req.query);
         res.status(200).json(buyers);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        next(new AppError('Failed to get buyer: ' + error.message, 400));
     }
 };
 
 exports.updateBuyer = async (req, res) => {
-    const { id } = req.params;
-    const updates = req.body;
     try {
-        const buyer = await Buyer.findByIdAndUpdate(id, updates, { new: true });
-        res.status(200).json(buyer);
+        const updatedBuyer = await buyerService.updateBuyer(req.params.id, req.body);
+        res.status(200).json(updatedBuyer);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+         next(new AppError('Failed to update buyer: ' + error.message, 400));
     }
 };
 
 exports.deleteBuyer = async (req, res) => {
-    const { id } = req.params;
     try {
-        await Buyer.findByIdAndDelete(id);
-        res.status(200).json({ message: 'Buyer deleted' });
+        const result = await buyerService.deleteBuyer(req.params.id);
+        res.status(200).json(result);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        next(new AppError('Failed to delete buyer: ' + error.message, 400));
+    }
+};
+
+exports.exampleRoute = async (req, res, next) => {
+    try {
+        // Simulate an operational error for testing
+        throw new AppError('This is an example error', 400);
+    } catch (err) {
+        next(err); // Pass the error to the global error handler
     }
 };

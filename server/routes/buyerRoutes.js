@@ -1,12 +1,16 @@
+// buyerRoutes.js
 const express = require('express');
-const { createBuyer, getBuyers, updateBuyer, deleteBuyer } = require('../controllers/buyerController');
-const { requireAuth } = require('../middlewares/authMiddleware');
+const { getBuyers, createBuyer, updateBuyer, deleteBuyer, exampleRoute } = require('../controllers/buyerController');
+const authenticateJWT = require('../middlewares/authMiddleware'); 
 
 const router = express.Router();
 
-router.post('/', requireAuth, createBuyer);
-router.get('/', requireAuth, getBuyers);
-router.put('/:id', requireAuth, updateBuyer);
-router.delete('/:id', requireAuth, deleteBuyer);
+// Protect routes with the authentication middleware
+router.get('/', authenticateJWT, getBuyers);
+router.post('/', authenticateJWT, createBuyer);
+router.put('/:id', authenticateJWT, updateBuyer);
+router.delete('/:id', authenticateJWT, deleteBuyer);
+
+router.get('/error', exampleRoute);
 
 module.exports = router;
