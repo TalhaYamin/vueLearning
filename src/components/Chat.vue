@@ -98,11 +98,12 @@ export default {
     };
   },
 
+
   setup() {
     const toast = useToast(); // Initialize toast
 
     return {
-      toast, // Make toast available in methods
+      toast,
     };
   },
 
@@ -142,48 +143,49 @@ export default {
     },
 
     setupSocketListeners() {
-      this.socket.on('room list', (rooms) => {
-        this.rooms = rooms;
-      });
+  this.socket.on('room list', (rooms) => {
+    this.rooms = rooms;
+  });
 
-      this.socket.on('room history', (history) => {
-        this.roomMessages = history;
-      });
+  this.socket.on('room history', (history) => {
+    this.roomMessages = history;
+  });
 
-      this.socket.on('room message', (msg) => {
-        if (msg.room === this.currentRoom) {
-          this.roomMessages.push(msg);
-          this.notifyUser(msg); // Trigger sound and notification
-        }
-      });
+  this.socket.on('room message', (msg) => {
+    if (msg.room === this.currentRoom) {
+      this.roomMessages.push(msg);
+      this.notifyUser(msg); // Trigger sound and notification
+    }
+  });
 
-      this.socket.on('typing', (data) => {
-        if (data.room === this.currentRoom && data.userEmail !== this.user.email) {
-          this.typingUser = data.userEmail;
-        }
-      });
+  this.socket.on('typing', (data) => {
+    if (data.room === this.currentRoom && data.userEmail !== this.user.email) {
+      this.typingUser = data.userEmail;
+    }
+  });
 
-      this.socket.on('stopped typing', (data) => {
-        if (data.room === this.currentRoom && data.userEmail === this.typingUser) {
-          this.typingUser = '';
-        }
-      });
+  this.socket.on('stopped typing', (data) => {
+    if (data.room === this.currentRoom && data.userEmail === this.typingUser) {
+      this.typingUser = '';
+    }
+  });
 
-      this.socket.on('notification', ({ message, room }) => {
-        if (room === this.currentRoom) {
-          this.roomMessages.push({
-            senderEmail: 'System',
-            message: message,
-            timestamp: new Date().toISOString(),
-          });
-          this.notifyUser({ message: message, senderEmail: 'System' });
-        }
+  this.socket.on('notification', ({ message, room }) => {
+    if (room === this.currentRoom) {
+      this.roomMessages.push({
+        senderEmail: 'System',
+        message: message,
+        timestamp: new Date().toISOString(),
       });
+      this.notifyUser({ message: message, senderEmail: 'System' });
+    }
+  });
 
-      this.socket.on('online users', (users) => {
-        this.onlineUsers = users;
-      });
-    },
+  this.socket.on('online users', (users) => {
+    this.onlineUsers = users;
+  });
+},
+
 
     notifyUser(message) {
       // Play notification sound

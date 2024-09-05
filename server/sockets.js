@@ -1,30 +1,9 @@
-// sockets.js
 const { Server } = require('socket.io');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const path = require('path');
 
-// In-memory user storage (for demonstration)
-const users = [];
-const JWT_SECRET = 'your_secret_key';
-
-// File upload setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Save files in 'uploads' folder
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Add timestamp to avoid duplicate names
-  }
-});
-const upload = multer({ storage });
-
-// Socket.IO Setup
-let onlineUsers = {}; // Store online users by room
-let roomMessages = {}; // Store messages by room
-let rooms = ['General', 'Sports', 'Tech']; // Default rooms
-const adminEmails = ['admin@admin.com']; // Admin users list
+let onlineUsers = {};
+let roomMessages = {};
+let rooms = ['General', 'Sports', 'Tech'];
+const adminEmails = ['admin@admin.com'];
 
 // Function to determine user role
 function getUserRole(email) {
@@ -44,6 +23,8 @@ const setupSockets = (server) => {
     const email = socket.handshake.query.email;
     const role = getUserRole(email);
 
+    onlineUsers[socket.id] = { id: userId, email, role, socketId: socket.id };
+
     console.log(`User connected: ${email}, Role: ${role}, Socket ID: ${socket.id}`);
 
     // Send initial room list
@@ -52,7 +33,6 @@ const setupSockets = (server) => {
     // Handle room joining
     socket.on('join room', (room) => {
       console.log(`${email} is attempting to join room: ${room}`);
-
       socket.join(room);
 
       if (!onlineUsers[room]) {
@@ -64,12 +44,12 @@ const setupSockets = (server) => {
       }
 
       if (!onlineUsers[room].find(user => user.id === userId)) {
-        onlineUsers[room].push({ id: userId, email, role });
+        onlineUsers[room].push({ id: userId, email, role, socketId: socket.id });
       }
 
+      io.to(room).emit('online users', onlineUsers[room]);
       socket.emit('room history', roomMessages[room]);
       io.to(room).emit('notification', { message: `${email} has joined the room`, room });
-      io.to(room).emit('online users', onlineUsers[room]);
     });
 
     // Handle file sharing in rooms
@@ -153,13 +133,19 @@ const setupSockets = (server) => {
     });
 
     // Handle user disconnecting
-    socket.on('disconnecting', () => {
-      const rooms = Array.from(socket.rooms).slice(1);
-      rooms.forEach(room => {
-        onlineUsers[room] = onlineUsers[room].filter(user => user.id !== userId);
-        io.to(room).emit('notification', { message: `${email} has left the room`, room });
-        io.to(room).emit('online users', onlineUsers[room]);
+    socket.on('disconnect', () => {
+      const userRooms = Array.from(socket.rooms).slice(1);
+      userRooms.forEach(room => {
+        if (onlineUsers[room]) {
+          onlineUsers[room] = onlineUsers[room].filter(user => user.socketId !== socket.id);
+          io.to(room).emit('online users', onlineUsers[room]);
+          io.to(room).emit('notification', { message: `${email} has left the room`, room });
+        }
       });
+
+       // Remove the user from the global online users list
+      delete onlineUsers[socket.id];
+      console.log(`User disconnected: ${email}, Socket ID: ${socket.id}`);
     });
   });
 };
